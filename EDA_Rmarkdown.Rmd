@@ -1,0 +1,186 @@
+---
+title: "EDA"
+author: "Arij"
+date: "6/23/2022"
+output: word_document
+---
+
+
+```{r setup, include=FALSE,echo=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+
+```
+
+```{r echo=FALSE,include=FALSE,message=FALSE, warning=FALSE}
+options(tinytex.verbose = TRUE)
+knitr::knit_engines$set(python= reticulate::eng_python)
+options(encoding = 'UTF-8')
+```
+
+```{r echo=FALSE,include=FALSE,message=FALSE, warning=FALSE}
+library(reticulate)
+#use_condaenv("C:\\Users\\hp\\Documents\\.conda\\envs\\r-reticulate\\python.exe")
+use_python("C:\\Python39\\python.exe")
+#reticulate::repl_python()
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(openxlsx)
+base=read.xlsx("bilans.xlsx")
+attach(base)
+```
+
+
+```{python echo=FALSE, message=FALSE, warning=FALSE}
+df1=r.base
+df1=df1.drop(columns=['Exercice'])
+df1.head()
+```
+
+
+```{python echo=FALSE}
+#proportion of missing value in the data 
+((df1.isnull().sum()/df1.shape[0])*100).round(4)
+```
+
+```{python echo=FALSE}
+# drop missing values
+df1.dropna(axis=0,inplace=True)
+df1.isnull().sum()
+```
+
+```{python echo=FALSE}
+df1.shape
+```
+
+
+
+```{python echo=FALSE}
+import warnings
+warnings.filterwarnings('ignore')
+import seaborn as sns
+from scipy import stats
+import matplotlib.pyplot as plt
+plt.figure (figsize=(15,5))
+ax=sns.boxplot(data=df1[['X5','R5','X4','R2']], orient="h", palette="Set2")
+plt.xticks(size=30)
+plt.yticks(size=30)
+plt.xlim(-1,6)
+ax
+```
+
+```{python echo=FALSE}
+#plt.figure (figsize=(15,5))
+ax = sns.boxplot(data=df1[['X3','R4','X2','R7']], orient="h", palette="Set2")
+plt.xticks(size=30)
+plt.yticks(size=30)
+plt.xlim(-1,1.5)
+ax
+```
+
+
+```{python echo=FALSE}
+#plt.figure (figsize=(15,5))
+ax = sns.boxplot(data=df1[['R3','R1','R6','X1']], orient="h", palette="Set2")
+plt.xticks(size=30)
+plt.yticks(size=30)
+plt.xlim(-4,10)
+ax
+```
+
+
+```{python echo=FALSE}
+import pandas as pd
+import numpy as np
+Q1=df1.drop(columns=['Forme_juridique','Secteur','Anciennet\u00e9','statut']).quantile(0.25)
+Q3=df1.drop(columns=['Forme_juridique','Secteur','Anciennet\u00e9','statut']).quantile(0.75)
+IQR=Q3-Q1
+# calculate the outlier cutoff
+cut_off = IQR * 1.5
+lower,upper = Q1- cut_off, Q3 + cut_off
+#print(df.drop(columns=['Forme_juridique','Secteur','Anciennet\u00e9','statut']).columns)
+pd.DataFrame(zip(np.transpose(df1.drop(columns=['Forme_juridique','Secteur','Anciennet\u00e9',
+'statut']).columns),np.transpose(lower).round(4), np.transpose(upper).round(4)), columns=['variable','lower_limit', 'upper_limit'])
+```
+
+
+```{python echo=FALSE}
+((df1.drop(columns=['Forme_juridique','Secteur','Anciennet\u00e9','statut']) < lower) |
+ (df1.drop(columns=['Forme_juridique','Secteur','Anciennet\u00e9','statut']) > upper)).sum()
+```
+
+
+
+
+```{python echo=FALSE}
+df = df1[~((df1 < lower) |(df1 > upper)).any(axis=1)]
+((df.drop(columns=['Forme_juridique','Secteur','Anciennet\u00e9','statut']) < lower) |
+ (df.drop(columns=['Forme_juridique','Secteur','Anciennet\u00e9','statut']) > upper)).sum()
+```
+```{python echo=FALSE}
+data = df.Secteur.value_counts()
+plt.figure(figsize=(10,4))
+data.plot.pie(autopct="%.1f%%")
+```
+
+```{python echo=FALSE} 
+plt.figure (figsize=(15,5))
+ax=sns.countplot(x='Forme_juridique',data=df,palette='hls')
+for p in ax.patches:
+    ax.annotate('{:.1f}'.format(p.get_height()), (p.get_x(), p.get_height()))
+
+```
+
+```{python echo=FALSE} 
+plt.figure (figsize=(15,5))
+ax=sns.countplot(x='Anciennet\u00e9',data=df,palette='hls')
+for p in ax.patches:
+    ax.annotate('{:.1f}'.format(p.get_height()), (p.get_x(), p.get_height()))
+```
+
+```{python echo=FALSE}
+plt.figure (figsize=(15,5))
+ax=sns.countplot(x='statut',data=df,palette='hls')
+for p in ax.patches:
+    ax.annotate('{:.1f}'.format(p.get_height()), (p.get_x(), p.get_height()))
+```
+
+
+
+### Based on the company's status
+
+```{r echo=FALSE, fig.height=3, fig.width=9, message=FALSE, warning=FALSE}
+(ggplot(base2, aes(statut, fill = Forme_juridique))+
+  geom_bar(position = "dodge")+xlab("statut")+ylab("Forme_juridique") +
+  ggtitle(names(base2[,"Forme_juridique"]))
+ +
+ggplot(base2, aes(statut, fill = Ancienneté))+
+  geom_bar(position = "dodge")+xlab("statut")+ylab("Ancienneté") +
+  ggtitle(names(base2[,"Ancienneté"]))
+)
+```
+ 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=4,fig.width=9}
+library(GGally)
+ggpairs(base.active[,], aes(colour = statut, alpha = 0.4))
+```
+ 
+ - The figure above shows several statistical information on the set of variables that make up the Altman Z score:\
+  - no linear relationship is detected between the ratios, this is explained by the cloud of points and the correlation matrix
+   * a strong correlation between Z and X1, X3 and X5, this is noted from the coefficients of the correlations of these ratios with the Z score and of course their scatter-plots which look like linear functions
+   * no other remarkable correlation for the ratios between them.
+ 
+```{r echo=FALSE,message=FALSE, fig.height = 5 , fig.width = 9}
+ggpairs(base2[,c((4:10),17)],mapping = aes(colour = statut, alpha = 0.4))
+
+```
+- the ratios R1,..,R7 do not show any remarkable correlation between them, so they will all be included in the creation of the model.
+
+
